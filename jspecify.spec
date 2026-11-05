@@ -20,6 +20,9 @@ the annotation sources with a flat Maven POM.
 
 %prep
 %autosetup -n jspecify-%{version}
+# ElementType.MODULE is not in the Java 8 API. Upstream still emits
+# class version 52 by compiling with -source 8 -target 8 against the
+# running JDK, so --release 8 would hide that constant.
 python - <<'PY'
 import xml.etree.ElementTree as ET
 NS = "http://maven.apache.org/POM/4.0.0"
@@ -40,7 +43,8 @@ add(root, "artifactId", "jspecify")
 add(root, "version", "%{version}")
 add(root, "name", "JSpecify")
 props = ET.SubElement(root, tag("properties"))
-add(props, "maven.compiler.release", "8")
+add(props, "maven.compiler.source", "8")
+add(props, "maven.compiler.target", "8")
 ET.ElementTree(root).write("pom.xml", encoding="utf-8", xml_declaration=True)
 PY
 
