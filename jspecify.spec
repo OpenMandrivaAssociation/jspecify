@@ -1,6 +1,6 @@
 Name:		jspecify
-Version:	1.0.0
-Release:	2
+Version:	1.0.1
+Release:	1
 Summary:	Annotations for Java static analysis
 Group:		Development/Java
 License:	ASL 2.0
@@ -18,10 +18,12 @@ BuildOption(install):	--file-name %{name}
 Nullness annotations used by static analysis. jsoup marks its public
 types with these. The upstream build is Gradle, so this package compiles
 the annotation sources with a flat Maven POM. The jar's automatic module
-name is org.jspecify, which JUnit's module-info requires.
+name is org.jspecify, which JUnit's module-info requires. 1.0.1 changes
+Javadoc only; the annotation semantics are the same.
 
 %prep
 %autosetup -n jspecify-%{version}
+find . -name '*.jar' -delete
 # ElementType.MODULE is not in the Java 8 API. Upstream still emits
 # class version 52 by compiling with -source 8 -target 8 against the
 # running JDK, so --release 8 would hide that constant.
@@ -58,11 +60,10 @@ jar ufm target/jspecify-%{version}.jar manifest-extra.mf
 set -eo pipefail
 export JAVA_HOME=%{_jvmdir}/java-openjdk
 export PATH="$JAVA_HOME/bin:$PATH"
-desc=$(jar --describe-module --file target/jspecify-%{version}.jar)
-printf '%s\n' "$desc"
-if ! printf '%s\n' "$desc" | grep -F -q 'org.jspecify'; then
-	exit 1
-fi
+# Java 8 jar has no --describe-module. The manifest carries the name.
+jar xf target/jspecify-%{version}.jar META-INF/MANIFEST.MF
+cat META-INF/MANIFEST.MF
+grep -F -q 'Automatic-Module-Name: org.jspecify' META-INF/MANIFEST.MF
 mkdir -p check
 cat > check/Smoke.java << 'EOF'
 import java.lang.reflect.AnnotatedType;
@@ -83,7 +84,7 @@ public class Smoke {
 	}
 }
 EOF
-javac --release 8 -encoding UTF-8 -proc:none -cp target/jspecify-%{version}.jar -d check check/Smoke.java
+javac -source 8 -target 8 -encoding UTF-8 -Xlint:-options -cp target/jspecify-%{version}.jar -d check check/Smoke.java
 java -cp "check:target/jspecify-%{version}.jar" Smoke jspecify_ok > check.log
 cat check.log
 grep -F -q 'jspecify_ok Nullable' check.log
